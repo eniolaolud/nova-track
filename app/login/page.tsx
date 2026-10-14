@@ -1,18 +1,51 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 
 const PURPLE = "#7C5CBF";
 
-export default function LoginPage() {
+function LoginForm() {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = React.useState<string | null>(null);
 
-  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("message") === "check-email") {
+      setInfoMessage("Check your email to confirm your account, then log in.");
+    } else if (params.get("error") === "auth") {
+      setInfoMessage("Sign-in link expired. Please try again.");
+    }
+  }, []);
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
-    // Placeholder: connect your auth flow here.
-    window.setTimeout(() => setIsSubmitting(false), 600);
+    setError(null);
+
+    const supabase = createClient();
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email") ?? "");
+    const password = String(formData.get("password") ?? "");
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setIsSubmitting(false);
+
+    if (signInError) {
+      setError(signInError.message);
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
   }
 
   const page: React.CSSProperties = {
@@ -159,6 +192,26 @@ export default function LoginPage() {
     textDecoration: "none",
   };
 
+  const errorBox: React.CSSProperties = {
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "#FFF0F0",
+    border: "1px solid #FFCCCC",
+    color: "#9B2C2C",
+    fontSize: 13,
+    lineHeight: 1.45,
+  };
+
+  const infoBox: React.CSSProperties = {
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "#EDE7F6",
+    border: "1px solid rgba(124, 92, 191, 0.20)",
+    color: "#2D2145",
+    fontSize: 13,
+    lineHeight: 1.45,
+  };
+
   return (
     <main style={page}>
       <header style={header}>
@@ -174,6 +227,8 @@ export default function LoginPage() {
           <p style={hint}>Pick up right where you left off.</p>
 
           <form style={form} onSubmit={onSubmit}>
+            {infoMessage ? <p style={infoBox}>{infoMessage}</p> : null}
+            {error ? <p style={errorBox}>{error}</p> : null}
             <label style={label}>
               <span style={labelText}>Email</span>
               <input
@@ -219,4 +274,8 @@ export default function LoginPage() {
       </section>
     </main>
   );
+}
+
+export default function LoginPage() {
+  return <LoginForm />;
 }

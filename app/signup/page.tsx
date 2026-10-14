@@ -1,18 +1,55 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 
 const PURPLE = "#7C5CBF";
 
 export default function SignUpPage() {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsSubmitting(true);
-    // Placeholder: wire up your auth provider here.
-    window.setTimeout(() => setIsSubmitting(false), 600);
+    setError(null);
+
+    const supabase = createClient();
+    const formData = new FormData(e.currentTarget);
+    const email = String(formData.get("email") ?? "");
+    const password = String(formData.get("password") ?? "");
+    const fullName = String(formData.get("fullName") ?? "");
+    const username = String(formData.get("username") ?? "");
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          username,
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    setIsSubmitting(false);
+
+    if (signUpError) {
+      setError(signUpError.message);
+      return;
+    }
+
+    if (data.session) {
+      router.push("/onboardingchoice");
+      router.refresh();
+      return;
+    }
+
+    router.push("/login?message=check-email");
   }
 
   const page: React.CSSProperties = {
@@ -153,6 +190,17 @@ export default function SignUpPage() {
     textDecoration: "none",
   };
 
+  const errorBox: React.CSSProperties = {
+    marginTop: 12,
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "#FFF0F0",
+    border: "1px solid #FFCCCC",
+    color: "#9B2C2C",
+    fontSize: 13,
+    lineHeight: 1.45,
+  };
+
   return (
     <main style={page}>
       <header style={header}>
@@ -173,6 +221,7 @@ export default function SignUpPage() {
           <p style={hint}>Join in a minute — we’ll get you set up fast.</p>
 
           <form style={form} onSubmit={onSubmit}>
+            {error ? <p style={errorBox}>{error}</p> : null}
             <label style={label}>
               <span style={labelText}>Full Name</span>
               <input

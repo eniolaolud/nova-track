@@ -1,18 +1,31 @@
 "use client";
 
+import {
+  ClipboardList,
+  Flame,
+  Globe,
+  Home,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 
 const PURPLE = "#7C5CBF";
+const INACTIVE = "rgba(45, 33, 69, 0.68)";
 
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Home", icon: "🏠" },
-  { href: "/habits", label: "Habits", icon: "🔥" },
-  { href: "/todos", label: "To-Dos", icon: "📋" },
-  { href: "/community", label: "Community", icon: "🌍" },
-  { href: "/profile", label: "Profile", icon: "👤" },
-] as const;
+const NAV_ITEMS: {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+}[] = [
+  { href: "/dashboard", label: "Home", Icon: Home },
+  { href: "/habits", label: "Habits", Icon: Flame },
+  { href: "/todos", label: "To-Dos", Icon: ClipboardList },
+  { href: "/community", label: "Community", Icon: Globe },
+  { href: "/profile", label: "Profile", Icon: User },
+];
 
 const HIDDEN_PREFIXES = ["/login", "/signup", "/onboardingchoice"];
 const HIDDEN_EXACT = new Set(["/"]);
@@ -56,15 +69,10 @@ export default function BottomNav() {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 2,
+    gap: 4,
     padding: "6px 4px",
     borderRadius: 12,
     minWidth: 0,
-  };
-
-  const icon: React.CSSProperties = {
-    fontSize: 18,
-    lineHeight: 1,
   };
 
   const label: React.CSSProperties = {
@@ -77,24 +85,28 @@ export default function BottomNav() {
   return (
     <nav style={nav} aria-label="Main navigation">
       <div style={inner}>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.map(({ href, label: itemLabel, Icon }) => {
           const active =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+            pathname === href || pathname.startsWith(`${href}/`);
+          const color = active ? PURPLE : INACTIVE;
 
           return (
             <Link
-              key={item.href}
-              href={item.href}
+              key={href}
+              href={href}
               style={{
                 ...linkBase,
-                color: active ? PURPLE : "rgba(45, 33, 69, 0.68)",
+                color,
                 background: active ? "rgba(124, 92, 191, 0.10)" : "transparent",
               }}
             >
-              <span style={icon} aria-hidden="true">
-                {item.icon}
-              </span>
-              <span style={label}>{item.label}</span>
+              <Icon
+                size={20}
+                strokeWidth={active ? 2.25 : 2}
+                color={color}
+                aria-hidden="true"
+              />
+              <span style={label}>{itemLabel}</span>
             </Link>
           );
         })}

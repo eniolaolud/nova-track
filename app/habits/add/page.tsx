@@ -1,28 +1,145 @@
- "use client";
+"use client";
 
+import { createClient } from "@/lib/supabase/client";
+import {
+  Ban,
+  BookOpen,
+  ChevronRight,
+  Cigarette,
+  Clock,
+  Droplets,
+  Footprints,
+  Salad,
+  Smartphone,
+  Sprout,
+  Wine,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  formatReminderDisplay,
+  toTimeInputValue,
+} from "@/lib/habits/time";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 
 const PURPLE = "#7C5CBF";
 const LAVENDER = "#EDE7F6";
+const BREAK_RED = "#E74C3C";
+const BUILD_GREEN = "#22C55E";
+
+type PresetHabit = {
+  name: string;
+  Icon: LucideIcon;
+};
+
+function TypeTitle({
+  Icon,
+  label,
+  color,
+}: {
+  Icon: LucideIcon;
+  label: string;
+  color: string;
+}) {
+  const row: React.CSSProperties = {
+    margin: 0,
+    fontSize: 16,
+    fontWeight: 950,
+    color: "#2D2145",
+    letterSpacing: "-0.01em",
+    lineHeight: 1.2,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+  };
+
+  return (
+    <p style={row}>
+      <Icon size={16} strokeWidth={2.25} color={color} aria-hidden="true" />
+      <span>{label}</span>
+    </p>
+  );
+}
 
 export default function AddHabitPage() {
-  const [habitType, setHabitType] = React.useState<"break" | "build">("break");
+  const router = useRouter();
 
-  const presetHabits =
+  // These are "state" values — React remembers them while you use the page.
+  const [habitType, setHabitType] = React.useState<"break" | "build">("break");
+  const [selectedName, setSelectedName] = React.useState("");
+  const [customName, setCustomName] = React.useState("");
+  const [reminderTime, setReminderTime] = React.useState("20:00");
+  const reminderInputRef = React.useRef<HTMLInputElement>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const presetHabits: PresetHabit[] =
     habitType === "break"
       ? [
-          { name: "No Smoking", emoji: "🚬" },
-          { name: "No Scrolling", emoji: "📱" },
-          { name: "No Junk Food", emoji: "🍟" },
-          { name: "No Alcohol", emoji: "🍺" },
+          { name: "No Smoking", Icon: Cigarette },
+          { name: "No Scrolling", Icon: Smartphone },
+          { name: "No Junk Food", Icon: Salad },
+          { name: "No Alcohol", Icon: Wine },
         ]
       : [
-          { name: "Morning Run", emoji: "🏃" },
-          { name: "Drink Water", emoji: "💧" },
-          { name: "Read Daily", emoji: "📚" },
-          { name: "Meditate", emoji: "🧘" },
+          { name: "Morning Run", Icon: Footprints },
+          { name: "Drink Water", Icon: Droplets },
+          { name: "Read Daily", Icon: BookOpen },
+          { name: "Meditate", Icon: Sprout },
         ];
+
+  // Final habit name = custom text if typed, otherwise the preset you clicked.
+  const habitName = customName.trim() || selectedName.trim();
+
+  async function handleAddHabit() {
+    setError(null);
+
+    if (!habitName) {
+      setError("Pick a preset habit or type your own name first.");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const supabase = createClient();
+
+      // 1) Who is logged in?
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        setError("You need to be logged in to add a habit.");
+        setIsSaving(false);
+        return;
+      }
+
+      // 2) Save one row into the habits table
+      const { error: insertError } = await supabase.from("habits").insert({
+        user_id: user.id,
+        name: habitName,
+        habit_type: habitType,
+        reminder_time: formatReminderDisplay(toTimeInputValue(reminderTime)),
+        streak_days: 0,
+      });
+
+      if (insertError) {
+        setError(insertError.message);
+        setIsSaving(false);
+        return;
+      }
+
+      // 3) Go back to the habits list
+      router.push("/habits");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setIsSaving(false);
+    }
+  }
 
   const page: React.CSSProperties = {
     minHeight: "100vh",
@@ -104,15 +221,6 @@ export default function AddHabitPage() {
     userSelect: "none",
   };
 
-  const typeTitle: React.CSSProperties = {
-    margin: 0,
-    fontSize: 16,
-    fontWeight: 950,
-    color: "#2D2145",
-    letterSpacing: "-0.01em",
-    lineHeight: 1.2,
-  };
-
   const typeDesc: React.CSSProperties = {
     margin: 0,
     fontSize: 13,
@@ -127,28 +235,10 @@ export default function AddHabitPage() {
     gap: 10,
   };
 
-  const presetRow: React.CSSProperties = {
-    padding: "12px 12px",
-    borderRadius: 14,
-    background: LAVENDER,
-    border: "1px solid rgba(124, 92, 191, 0.16)",
-    color: "#2D2145",
-    fontWeight: 850,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  };
-
   const presetLeft: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     gap: 10,
-  };
-
-  const rowRight: React.CSSProperties = {
-    color: "rgba(45, 33, 69, 0.55)",
-    fontWeight: 900,
   };
 
   const inputLabel: React.CSSProperties = {
@@ -210,6 +300,7 @@ export default function AddHabitPage() {
   };
 
   const clock: React.CSSProperties = {
+    position: "relative",
     padding: "6px 10px",
     borderRadius: 999,
     background: "rgba(124, 92, 191, 0.08)",
@@ -232,8 +323,20 @@ export default function AddHabitPage() {
     color: "white",
     fontSize: 15,
     fontWeight: 950,
-    cursor: "pointer",
+    cursor: isSaving ? "not-allowed" : "pointer",
+    opacity: isSaving ? 0.75 : 1,
     boxShadow: "0 10px 22px rgba(124, 92, 191, 0.28)",
+  };
+
+  const errorBox: React.CSSProperties = {
+    marginTop: 10,
+    padding: "10px 12px",
+    borderRadius: 12,
+    background: "#FFF0F0",
+    border: "1px solid #FFCCCC",
+    color: "#9B2C2C",
+    fontSize: 13,
+    lineHeight: 1.45,
   };
 
   return (
@@ -254,7 +357,10 @@ export default function AddHabitPage() {
             <div style={typeGrid}>
               <button
                 type="button"
-                onClick={() => setHabitType("break")}
+                onClick={() => {
+                  setHabitType("break");
+                  setSelectedName("");
+                }}
                 style={{
                   ...typeCardBase,
                   background: habitType === "break" ? "#FFF0F0" : "white",
@@ -264,13 +370,16 @@ export default function AddHabitPage() {
                       : "1.5px solid rgba(124, 92, 191, 0.18)",
                 }}
               >
-                <p style={typeTitle}>🔴 Break It</p>
+                <TypeTitle Icon={Ban} label="Break It" color={BREAK_RED} />
                 <p style={typeDesc}>Stop a bad habit</p>
               </button>
 
               <button
                 type="button"
-                onClick={() => setHabitType("build")}
+                onClick={() => {
+                  setHabitType("build");
+                  setSelectedName("");
+                }}
                 style={{
                   ...typeCardBase,
                   background: habitType === "build" ? "#F0FFF4" : "white",
@@ -280,7 +389,7 @@ export default function AddHabitPage() {
                       : "1.5px solid rgba(124, 92, 191, 0.18)",
                 }}
               >
-                <p style={typeTitle}>🟢 Build It</p>
+                <TypeTitle Icon={Sprout} label="Build It" color={BUILD_GREEN} />
                 <p style={typeDesc}>Start a good habit</p>
               </button>
             </div>
@@ -289,17 +398,52 @@ export default function AddHabitPage() {
           <div style={cardBase}>
             <p style={sectionTitle}>Choose a habit</p>
             <div style={rowList}>
-              {presetHabits.map((h) => (
-                <div key={h.name} style={presetRow}>
-                  <span style={presetLeft}>
-                    <span aria-hidden="true">{h.emoji}</span>
-                    <span>{h.name}</span>
-                  </span>
-                  <span style={rowRight} aria-hidden="true">
-                    →
-                  </span>
-                </div>
-              ))}
+              {presetHabits.map((h) => {
+                const isSelected = selectedName === h.name && !customName.trim();
+                return (
+                  <button
+                    key={h.name}
+                    type="button"
+                    onClick={() => {
+                      setSelectedName(h.name);
+                      setCustomName("");
+                    }}
+                    style={{
+                      padding: "12px 12px",
+                      borderRadius: 14,
+                      background: isSelected ? "#E0D4F7" : LAVENDER,
+                      border: isSelected
+                        ? `2px solid ${PURPLE}`
+                        : "1px solid rgba(124, 92, 191, 0.16)",
+                      color: "#2D2145",
+                      fontWeight: 850,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      cursor: "pointer",
+                      width: "100%",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span style={presetLeft}>
+                      <h.Icon
+                        size={16}
+                        strokeWidth={2}
+                        color={PURPLE}
+                        aria-hidden="true"
+                      />
+                      <span>{h.name}</span>
+                    </span>
+                    <ChevronRight
+                      size={18}
+                      strokeWidth={2.25}
+                      color="rgba(45, 33, 69, 0.45)"
+                      aria-hidden="true"
+                    />
+                  </button>
+                );
+              })}
             </div>
 
             <label style={inputLabel}>
@@ -307,6 +451,11 @@ export default function AddHabitPage() {
               <input
                 type="text"
                 placeholder="e.g., Read 10 pages"
+                value={customName}
+                onChange={(e) => {
+                  setCustomName(e.target.value);
+                  if (e.target.value.trim()) setSelectedName("");
+                }}
                 style={input}
               />
             </label>
@@ -314,16 +463,57 @@ export default function AddHabitPage() {
             <div style={reminderRow}>
               <div style={reminderLeft}>
                 <p style={inputTitle}>Set Reminder Time</p>
-                <p style={reminderMeta}>Daily reminder</p>
+                <p style={reminderMeta}>Daily check-in reminder</p>
               </div>
-              <div style={clock}>
-                <span aria-hidden="true">🕒</span>
-                <span style={reminderValue}>08:00 PM</span>
-              </div>
+              <button
+                type="button"
+                style={{ ...clock, cursor: "pointer", border: "1px solid rgba(124, 92, 191, 0.16)" }}
+                onClick={() => {
+                  const input = reminderInputRef.current;
+                  if (!input) return;
+                  try {
+                    input.showPicker();
+                  } catch {
+                    input.click();
+                  }
+                }}
+              >
+                <Clock
+                  size={16}
+                  strokeWidth={2.25}
+                  color={PURPLE}
+                  aria-hidden="true"
+                />
+                <span style={reminderValue}>
+                  {formatReminderDisplay(reminderTime)}
+                </span>
+                <input
+                  ref={reminderInputRef}
+                  type="time"
+                  value={toTimeInputValue(reminderTime)}
+                  onChange={(e) => setReminderTime(e.target.value)}
+                  style={{
+                    position: "absolute",
+                    opacity: 0,
+                    width: 0,
+                    height: 0,
+                    pointerEvents: "none",
+                  }}
+                  tabIndex={-1}
+                  aria-label="Reminder time"
+                />
+              </button>
             </div>
 
-            <button type="button" style={bottomButton}>
-              Add Habit
+            {error ? <p style={errorBox}>{error}</p> : null}
+
+            <button
+              type="button"
+              style={bottomButton}
+              onClick={handleAddHabit}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving..." : "Add Habit"}
             </button>
           </div>
         </section>
@@ -331,4 +521,3 @@ export default function AddHabitPage() {
     </main>
   );
 }
-

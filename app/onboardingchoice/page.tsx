@@ -1,3 +1,4 @@
+import { ArrowRight, Ban, ClipboardList, PartyPopper } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
@@ -24,12 +25,15 @@ export default function OnboardingPage() {
     maxWidth: 560,
   };
 
-  const title: React.CSSProperties = {
+  const titleRow: React.CSSProperties = {
     margin: 0,
     fontSize: 32,
     fontWeight: 800,
     letterSpacing: "-0.02em",
     lineHeight: 1.2,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
   };
 
   const subtitle: React.CSSProperties = {
@@ -80,12 +84,15 @@ export default function OnboardingPage() {
     border: "1.5px solid #E5DCF5",
   };
 
-  const cardTitle: React.CSSProperties = {
+  const cardTitleRow: React.CSSProperties = {
     margin: 0,
     color: "#2D2145",
     fontSize: 22,
     fontWeight: 800,
     lineHeight: 1.25,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
   };
 
   const cardDescription: React.CSSProperties = {
@@ -102,13 +109,19 @@ export default function OnboardingPage() {
     fontSize: 14,
     fontWeight: 700,
     textDecoration: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
   };
 
   return (
     <main style={page}>
       <header style={header}>
         <div style={headerInner}>
-          <h1 style={title}>You&apos;re all set! 🎉</h1>
+          <h1 style={titleRow}>
+            <span>You&apos;re all set!</span>
+            <PartyPopper size={28} strokeWidth={2.25} aria-hidden="true" />
+          </h1>
           <p style={subtitle}>What would you like to start with?</p>
         </div>
       </header>
@@ -116,7 +129,10 @@ export default function OnboardingPage() {
       <section style={content}>
         <div style={cardWrap}>
           <Link href="/habits" style={firstCard}>
-            <h2 style={cardTitle}>🔴 Track a Habit</h2>
+            <h2 style={cardTitleRow}>
+              <Ban size={20} strokeWidth={2.25} color="#E74C3C" aria-hidden="true" />
+              <span>Track a Habit</span>
+            </h2>
             <p style={cardDescription}>
               Break bad habits or build new ones. Set reminders and track your
               streaks.
@@ -124,18 +140,26 @@ export default function OnboardingPage() {
           </Link>
 
           <Link href="/todos" style={secondCard}>
-            <h2 style={cardTitle}>📋 Make a To-Do List</h2>
+            <h2 style={cardTitleRow}>
+              <ClipboardList
+                size={20}
+                strokeWidth={2.25}
+                color={PURPLE}
+                aria-hidden="true"
+              />
+              <span>Make a To-Do List</span>
+            </h2>
             <p style={cardDescription}>
               Add tasks with due dates and sync with your calendar.
             </p>
           </Link>
 
           <Link href="/dashboard" style={bottomLink}>
-            I&apos;ll explore on my own →
+            <span>I&apos;ll explore on my own</span>
+            <ArrowRight size={16} strokeWidth={2.25} aria-hidden="true" />
           </Link>
         </div>
       </section>
     </main>
   );
 }
-
