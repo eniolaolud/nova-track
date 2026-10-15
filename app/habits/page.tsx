@@ -275,22 +275,12 @@ export default function HabitsPage() {
 
       try {
         const supabase = createClient();
-        let { data, error: fetchError } = await supabase
+        const { data, error: fetchError } = await supabase
           .from("habits")
           .select(
             "id, name, habit_type, streak_days, reminder_time, last_checked_at",
           )
           .order("created_at", { ascending: false });
-
-        // Fallback if last_checked_at column isn't added yet
-        if (fetchError) {
-          const retry = await supabase
-            .from("habits")
-            .select("id, name, habit_type, streak_days, reminder_time")
-            .order("created_at", { ascending: false });
-          data = retry.data;
-          fetchError = retry.error;
-        }
 
         if (cancelled) return;
 
