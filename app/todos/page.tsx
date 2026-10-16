@@ -475,7 +475,11 @@ export default function TodosPage() {
                       completed={todo.completed}
                       onToggle={() => toggleCompleted(todo)}
                       onDownloadIcs={() => {
-                        window.location.href = `/api/calendar/ics/${todo.id}`;
+                        window.open(
+                          `/api/calendar/ics/${todo.id}`,
+                          "_blank",
+                          "noopener,noreferrer",
+                        );
                       }}
                       onDelete={() => deleteTodo(todo)}
                     />

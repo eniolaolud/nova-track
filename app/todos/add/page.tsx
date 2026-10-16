@@ -165,7 +165,7 @@ export default function AddTodoPage() {
         if (needsGoogle) {
           if (!selectedCalendarId) {
             setError(
-              "Task saved. Connect Google Calendar in Profile to sync, or try again on an iPhone/Mac.",
+              "Task saved. Connect Google Calendar first, then try again.",
             );
             setIsSaving(false);
             return;
@@ -184,25 +184,26 @@ export default function AddTodoPage() {
             }),
           });
 
-          const payload = (await calRes.json()) as {
-            error?: string;
-            code?: string;
-            htmlLink?: string;
-          };
-
-          if (!calRes.ok) {
-            // Fall back to opening Calendar via .ics
-            window.location.href = `/api/calendar/ics/${created.id}`;
-            return;
-          }
-
-          if (payload.htmlLink) {
-            window.open(payload.htmlLink, "_blank", "noopener,noreferrer");
+          if (calRes.ok) {
+            const payload = (await calRes.json()) as { htmlLink?: string };
+            if (payload.htmlLink) {
+              window.open(payload.htmlLink, "_blank", "noopener,noreferrer");
+            }
+          } else {
+            // Fall back to Calendar file without trapping this page
+            window.open(
+              `/api/calendar/ics/${created.id}`,
+              "_blank",
+              "noopener,noreferrer",
+            );
           }
         } else {
-          // Apple / .ics — opens Calendar app to add the event
-          window.location.href = `/api/calendar/ics/${created.id}`;
-          return;
+          // Apple / .ics — open Calendar in a new tab/window, then continue
+          window.open(
+            `/api/calendar/ics/${created.id}`,
+            "_blank",
+            "noopener,noreferrer",
+          );
         }
       }
 
