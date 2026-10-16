@@ -54,7 +54,7 @@ export default function AddTodoPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [info, setInfo] = React.useState<string | null>(null);
 
-  const method = preferredCalendarMethod(googleConnected);
+  const method = preferredCalendarMethod();
   const needsGoogle = addToCalendar && method === "google";
 
   React.useEffect(() => {
@@ -162,10 +162,10 @@ export default function AddTodoPage() {
       }
 
       if (addToCalendar && created?.id) {
-        if (needsGoogle) {
-          if (!selectedCalendarId) {
+        if (method === "google") {
+          if (!googleConnected || !selectedCalendarId) {
             setError(
-              "Task saved. Connect Google Calendar first, then try again.",
+              "Task saved, but Google Calendar is not connected yet. Tap Connect Google Calendar above, then add again with the toggle on.",
             );
             setIsSaving(false);
             return;
@@ -184,21 +184,25 @@ export default function AddTodoPage() {
             }),
           });
 
-          if (calRes.ok) {
-            const payload = (await calRes.json()) as { htmlLink?: string };
-            if (payload.htmlLink) {
-              window.open(payload.htmlLink, "_blank", "noopener,noreferrer");
-            }
-          } else {
-            // Fall back to Calendar file without trapping this page
-            window.open(
-              `/api/calendar/ics/${created.id}`,
-              "_blank",
-              "noopener,noreferrer",
+          const payload = (await calRes.json()) as {
+            error?: string;
+            htmlLink?: string;
+          };
+
+          if (!calRes.ok) {
+            setError(
+              payload.error ||
+                "Task saved, but Google Calendar sync failed. Try Connect Google Calendar again.",
             );
+            setIsSaving(false);
+            return;
+          }
+
+          if (payload.htmlLink) {
+            window.open(payload.htmlLink, "_blank", "noopener,noreferrer");
           }
         } else {
-          // Apple / .ics — open Calendar in a new tab/window, then continue
+          // Apple only — open Calendar via .ics
           window.open(
             `/api/calendar/ics/${created.id}`,
             "_blank",

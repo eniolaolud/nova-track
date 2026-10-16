@@ -1,4 +1,4 @@
-/** Prefer Apple (.ics) on Apple devices; Google elsewhere when connected. */
+/** Apple devices use .ics → Calendar app; everyone else uses Google Calendar. */
 export function isAppleDevice() {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
@@ -13,11 +13,6 @@ export function isAppleDevice() {
 
 export type CalendarMethod = "apple" | "google";
 
-export function preferredCalendarMethod(
-  googleConnected: boolean,
-): CalendarMethod {
-  if (isAppleDevice()) return "apple";
-  if (googleConnected) return "google";
-  // Fallback: .ics still opens in many calendar apps
-  return "apple";
+export function preferredCalendarMethod(): CalendarMethod {
+  return isAppleDevice() ? "apple" : "google";
 }
