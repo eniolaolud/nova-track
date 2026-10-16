@@ -198,9 +198,14 @@ export default function AddTodoPage() {
             return;
           }
 
-          if (payload.htmlLink) {
-            window.open(payload.htmlLink, "_blank", "noopener,noreferrer");
-          }
+          // Don't open Google's event htmlLink — it often says
+          // "Can't find the requested event" if another Google account is signed in.
+          // Open the main Calendar instead so the user can see the new event.
+          window.open(
+            "https://calendar.google.com/calendar/r",
+            "_blank",
+            "noopener,noreferrer",
+          );
         } else {
           // Apple only — open Calendar via .ics
           window.open(
