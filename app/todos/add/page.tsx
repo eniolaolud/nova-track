@@ -1,5 +1,6 @@
 "use client";
 
+import { preferredCalendarMethod } from "@/lib/calendar/prefer";
 import { createClient } from "@/lib/supabase/client";
 import { Calendar, Clock } from "lucide-react";
 import Link from "next/link";
@@ -43,9 +44,7 @@ export default function AddTodoPage() {
   const [dueDate, setDueDate] = React.useState(() => toDateInputValue());
   const [dueTime, setDueTime] = React.useState("20:00");
   const [addToCalendar, setAddToCalendar] = React.useState(true);
-  const [calendarTarget, setCalendarTarget] = React.useState<
-    "google" | "apple" | "both"
-  >("google");
+  const [googleConnected, setGoogleConnected] = React.useState(false);
   const [calendars, setCalendars] = React.useState<
     { id: string; summary: string; primary: boolean }[]
   >([]);
@@ -54,63 +53,52 @@ export default function AddTodoPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const needsGoogle =
-    addToCalendar && (calendarTarget === "google" || calendarTarget === "both");
-  const needsApple =
-    addToCalendar && (calendarTarget === "apple" || calendarTarget === "both");
+  const method = preferredCalendarMethod(googleConnected);
+  const needsGoogle = addToCalendar && method === "google";
 
   React.useEffect(() => {
-    if (!needsGoogle) return;
-
     let cancelled = false;
 
-    async function loadCalendars() {
-      setCalendarsError(null);
+    async function loadGoogleState() {
       try {
         const res = await fetch("/api/google/calendars");
         const payload = (await res.json()) as {
           calendars?: { id: string; summary: string; primary: boolean }[];
-          error?: string;
           code?: string;
+          error?: string;
         };
 
         if (cancelled) return;
 
-        if (!res.ok) {
-          if (payload.code === "NOT_CONNECTED" || payload.code === "NEED_RECONNECT") {
-            setCalendarsError(
-              payload.error ||
-                "Disconnect and reconnect Google Calendar in Profile, then come back here.",
-            );
-          } else {
-            setCalendarsError(
-              payload.error ||
-                "Could not load calendars. Disconnect and reconnect in Profile.",
-            );
-          }
-          setCalendars([]);
+        if (res.ok) {
+          const list = payload.calendars ?? [];
+          setGoogleConnected(true);
+          setCalendars(list);
+          setCalendarsError(null);
+          setSelectedCalendarId(
+            list.find((c) => c.primary)?.id || list[0]?.id || "",
+          );
           return;
         }
 
-        const list = payload.calendars ?? [];
-        setCalendars(list);
-        setSelectedCalendarId((current) => {
-          if (current && list.some((c) => c.id === current)) return current;
-          return list.find((c) => c.primary)?.id || list[0]?.id || "";
-        });
+        setGoogleConnected(false);
+        setCalendars([]);
+        if (payload.code !== "NOT_CONNECTED") {
+          setCalendarsError(payload.error || null);
+        }
       } catch {
         if (!cancelled) {
-          setCalendarsError("Could not load calendars.");
+          setGoogleConnected(false);
           setCalendars([]);
         }
       }
     }
 
-    void loadCalendars();
+    void loadGoogleState();
     return () => {
       cancelled = true;
     };
-  }, [needsGoogle]);
+  }, []);
 
   async function handleAddTask(e: React.FormEvent) {
     e.preventDefault();
@@ -159,59 +147,49 @@ export default function AddTodoPage() {
         return;
       }
 
-      if (needsGoogle && created?.id) {
-        if (!selectedCalendarId) {
-          setError(
-            "Task saved, but no Google calendar was selected. Disconnect/reconnect Calendar in Profile, then try again.",
-          );
-          setIsSaving(false);
-          return;
-        }
-
-        const calRes = await fetch("/api/google/create-event", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: title.trim(),
-            dueDate,
-            dueTime,
-            todoId: created.id,
-            calendarId: selectedCalendarId,
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          }),
-        });
-
-        const payload = (await calRes.json()) as {
-          error?: string;
-          code?: string;
-          htmlLink?: string;
-        };
-
-        if (!calRes.ok) {
-          if (payload.code === "NOT_CONNECTED") {
+      if (addToCalendar && created?.id) {
+        if (needsGoogle) {
+          if (!selectedCalendarId) {
             setError(
-              "Task saved, but Google Calendar is not connected yet. Go to Profile → connect Calendar.",
+              "Task saved. Connect Google Calendar in Profile to sync, or try again on an iPhone/Mac.",
             );
             setIsSaving(false);
             return;
           }
-          setError(
-            payload.error ||
-              "Task saved, but calendar event failed. You can connect Calendar in Profile.",
-          );
-          setIsSaving(false);
+
+          const calRes = await fetch("/api/google/create-event", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: title.trim(),
+              dueDate,
+              dueTime,
+              todoId: created.id,
+              calendarId: selectedCalendarId,
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            }),
+          });
+
+          const payload = (await calRes.json()) as {
+            error?: string;
+            code?: string;
+            htmlLink?: string;
+          };
+
+          if (!calRes.ok) {
+            // Fall back to opening Calendar via .ics
+            window.location.href = `/api/calendar/ics/${created.id}`;
+            return;
+          }
+
+          if (payload.htmlLink) {
+            window.open(payload.htmlLink, "_blank", "noopener,noreferrer");
+          }
+        } else {
+          // Apple / .ics — opens Calendar app to add the event
+          window.location.href = `/api/calendar/ics/${created.id}`;
           return;
         }
-
-        if (payload.htmlLink && !needsApple) {
-          window.open(payload.htmlLink, "_blank", "noopener,noreferrer");
-        }
-      }
-
-      // Apple Calendar / any app that opens .ics files
-      if (needsApple && created?.id) {
-        window.location.href = `/api/calendar/ics/${created.id}`;
-        return;
       }
 
       router.push("/todos");
@@ -488,31 +466,24 @@ export default function AddTodoPage() {
 
               {addToCalendar ? (
                 <>
-                  <label style={label}>
-                    <p style={labelText}>Calendar app</p>
-                    <select
-                      value={calendarTarget}
-                      onChange={(e) =>
-                        setCalendarTarget(
-                          e.target.value as "google" | "apple" | "both",
-                        )
-                      }
-                      style={{
-                        ...input,
-                        appearance: "none" as const,
-                        WebkitAppearance: "none" as const,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <option value="google">Google Calendar</option>
-                      <option value="apple">Apple Calendar (.ics)</option>
-                      <option value="both">Both</option>
-                    </select>
-                  </label>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 12,
+                      color: "rgba(45,33,69,0.7)",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {method === "apple"
+                      ? "On your device, this opens Calendar so you can add the event in one step."
+                      : googleConnected
+                        ? "This will add the event to your Google Calendar."
+                        : "Connect Google in Profile for one-tap sync, or we’ll open a calendar file instead."}
+                  </p>
 
-                  {needsGoogle ? (
+                  {needsGoogle && googleConnected ? (
                     <label style={label}>
-                      <p style={labelText}>Google calendar</p>
+                      <p style={labelText}>Which calendar?</p>
                       <select
                         value={selectedCalendarId}
                         onChange={(e) => setSelectedCalendarId(e.target.value)}
@@ -527,11 +498,7 @@ export default function AddTodoPage() {
                         }}
                       >
                         {calendars.length === 0 ? (
-                          <option value="">
-                            {calendarsError
-                              ? "No calendars loaded"
-                              : "Loading calendars..."}
-                          </option>
+                          <option value="">Loading calendars...</option>
                         ) : (
                           calendars.map((cal) => (
                             <option key={cal.id} value={cal.id}>
@@ -540,38 +507,25 @@ export default function AddTodoPage() {
                           ))
                         )}
                       </select>
-                      {calendarsError ? (
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: 12,
-                            color: "#9B2C2C",
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          {calendarsError}{" "}
-                          <Link
-                            href="/profile"
-                            style={{ color: PURPLE, fontWeight: 700 }}
-                          >
-                            Go to Profile
-                          </Link>
-                        </p>
-                      ) : null}
                     </label>
                   ) : null}
 
-                  {needsApple ? (
+                  {needsGoogle && !googleConnected ? (
                     <p
                       style={{
                         margin: 0,
                         fontSize: 12,
-                        color: "rgba(45,33,69,0.7)",
+                        color: "#9B2C2C",
                         lineHeight: 1.4,
                       }}
                     >
-                      Apple Calendar will download a .ics file you can open. For
-                      ongoing sync, subscribe from Profile.
+                      {calendarsError || "Google Calendar not connected."}{" "}
+                      <Link
+                        href="/profile"
+                        style={{ color: PURPLE, fontWeight: 700 }}
+                      >
+                        Connect in Profile
+                      </Link>
                     </p>
                   ) : null}
                 </>

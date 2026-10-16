@@ -28,12 +28,17 @@ export async function GET(_request: Request, { params }: Params) {
 
   const body = buildCalendar([todo], todo.title);
   const filename = `${todo.title.replace(/[^\w\-]+/g, "_").slice(0, 40) || "task"}.ics`;
+  const url = new URL(_request.url);
+  // inline = open in Calendar app (seamless on Apple); download=1 forces save
+  const asDownload = url.searchParams.get("download") === "1";
 
   return new NextResponse(body, {
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": asDownload
+        ? `attachment; filename="${filename}"`
+        : `inline; filename="${filename}"`,
       "Cache-Control": "no-store",
     },
   });

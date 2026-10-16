@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { Calendar, Check, Download, Trash2 } from "lucide-react";
+import { Calendar, Check, Trash2 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
@@ -150,11 +150,11 @@ function TodoRow({
         <button
           type="button"
           onClick={onDownloadIcs}
-          aria-label={`Download ${title} for Apple Calendar`}
-          title="Download .ics"
+          aria-label={`Add ${title} to calendar`}
+          title="Add to calendar"
           style={iconBtn(false)}
         >
-          <Download size={16} strokeWidth={2.25} />
+          <Calendar size={16} strokeWidth={2.25} />
         </button>
         <button
           type="button"
@@ -449,8 +449,8 @@ export default function TodosPage() {
             />
             <span>
               {calendarConnected
-                ? "Google Calendar connected"
-                : "Google Calendar not connected — connect in Profile"}
+                ? "Calendar ready — use Add to Calendar on new tasks"
+                : "Turn on Add to Calendar when creating a task"}
             </span>
           </div>
 
