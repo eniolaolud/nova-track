@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const error = searchParams.get("error");
 
   if (error || !code) {
-    return NextResponse.redirect(`${origin}/profile?calendar=denied`);
+    return NextResponse.redirect(`${origin}/todos/add?calendar=denied`);
   }
 
   const supabase = await createClient();
@@ -42,15 +42,15 @@ export async function GET(request: Request) {
 
     if (upsertError) {
       return NextResponse.redirect(
-        `${origin}/profile?calendar=error&message=${encodeURIComponent(upsertError.message)}`,
+        `${origin}/todos/add?calendar=error&message=${encodeURIComponent(upsertError.message)}`,
       );
     }
 
-    return NextResponse.redirect(`${origin}/profile?calendar=connected`);
+    return NextResponse.redirect(`${origin}/todos/add?calendar=connected`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "OAuth failed";
     return NextResponse.redirect(
-      `${origin}/profile?calendar=error&message=${encodeURIComponent(message)}`,
+      `${origin}/todos/add?calendar=error&message=${encodeURIComponent(message)}`,
     );
   }
 }

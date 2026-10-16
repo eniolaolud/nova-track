@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Missing Google env vars";
     return NextResponse.redirect(
-      `${origin}/profile?calendar=error&message=${encodeURIComponent(message)}`,
+      `${origin}/todos/add?calendar=error&message=${encodeURIComponent(message)}`,
     );
   }
 }

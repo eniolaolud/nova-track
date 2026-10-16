@@ -52,9 +52,23 @@ export default function AddTodoPage() {
   const [calendarsError, setCalendarsError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [info, setInfo] = React.useState<string | null>(null);
 
   const method = preferredCalendarMethod(googleConnected);
   const needsGoogle = addToCalendar && method === "google";
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const calendar = params.get("calendar");
+    if (calendar === "connected") {
+      setInfo("Google Calendar connected. Turn on Add to Calendar and save your task.");
+      setAddToCalendar(true);
+    } else if (calendar === "denied") {
+      setError("Google Calendar permission was denied.");
+    } else if (calendar === "error") {
+      setError(params.get("message") || "Google Calendar connection failed.");
+    }
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -478,7 +492,7 @@ export default function AddTodoPage() {
                       ? "On your device, this opens Calendar so you can add the event in one step."
                       : googleConnected
                         ? "This will add the event to your Google Calendar."
-                        : "Connect Google in Profile for one-tap sync, or we’ll open a calendar file instead."}
+                        : "Connect Google Calendar once to sync tasks on this device."}
                   </p>
 
                   {needsGoogle && googleConnected ? (
@@ -511,24 +525,44 @@ export default function AddTodoPage() {
                   ) : null}
 
                   {needsGoogle && !googleConnected ? (
-                    <p
+                    <a
+                      href="/api/google/connect"
                       style={{
-                        margin: 0,
-                        fontSize: 12,
-                        color: "#9B2C2C",
-                        lineHeight: 1.4,
+                        height: 44,
+                        borderRadius: 12,
+                        border: "none",
+                        background: PURPLE,
+                        color: "white",
+                        fontWeight: 900,
+                        fontSize: 14,
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0 14px",
                       }}
                     >
-                      {calendarsError || "Google Calendar not connected."}{" "}
-                      <Link
-                        href="/profile"
-                        style={{ color: PURPLE, fontWeight: 700 }}
-                      >
-                        Connect in Profile
-                      </Link>
-                    </p>
+                      Connect Google Calendar
+                    </a>
                   ) : null}
                 </>
+              ) : null}
+
+              {info ? (
+                <p
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    background: "rgba(124, 92, 191, 0.10)",
+                    border: "1px solid rgba(124, 92, 191, 0.22)",
+                    color: PURPLE,
+                    fontSize: 13,
+                    lineHeight: 1.45,
+                    margin: 0,
+                  }}
+                >
+                  {info}
+                </p>
               ) : null}
 
               {error ? <p style={errorBox}>{error}</p> : null}

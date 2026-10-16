@@ -3,7 +3,6 @@
 import SignOutRow from "@/app/components/SignOutRow";
 import { createClient } from "@/lib/supabase/client";
 import {
-  Calendar,
   CheckCircle2,
   Flame,
   ListChecks,
@@ -68,23 +67,6 @@ export default function ProfilePage() {
   const [tasksDone, setTasksDone] = React.useState(0);
   const [bestStreak, setBestStreak] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
-  const [calendarConnected, setCalendarConnected] = React.useState(false);
-  const [calendarEmail, setCalendarEmail] = React.useState<string | null>(null);
-  const [calendarMessage, setCalendarMessage] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const calendar = params.get("calendar");
-    if (calendar === "connected") {
-      setCalendarMessage("Google Calendar connected successfully.");
-    } else if (calendar === "disconnected") {
-      setCalendarMessage("Google Calendar disconnected.");
-    } else if (calendar === "denied") {
-      setCalendarMessage("Google Calendar permission was denied.");
-    } else if (calendar === "error") {
-      setCalendarMessage(params.get("message") || "Calendar connection failed.");
-    }
-  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -163,17 +145,6 @@ export default function ProfilePage() {
         setActiveHabits(habitRows.length);
         setTasksDone(todoRows.filter((t) => t.completed).length);
         setBestStreak(maxStreak);
-
-        const { data: googleToken } = await supabase
-          .from("google_calendar_tokens")
-          .select("email")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (!cancelled) {
-          setCalendarConnected(Boolean(googleToken));
-          setCalendarEmail(googleToken?.email ?? null);
-        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Could not load profile.");
@@ -441,77 +412,6 @@ export default function ProfilePage() {
           </div>
 
           <div style={settingsWrap}>
-            <div
-              style={{
-                background: "white",
-                borderRadius: 14,
-                border: "1px solid rgba(45, 33, 69, 0.08)",
-                padding: 14,
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  color: "#2D2145",
-                  fontWeight: 850,
-                }}
-              >
-                <Calendar size={18} strokeWidth={2} color="#2D2145" />
-                <span>Google Calendar</span>
-              </div>
-              <p style={{ margin: 0, fontSize: 13, color: "rgba(45,33,69,0.7)" }}>
-                {calendarConnected
-                  ? `Connected${calendarEmail ? ` as ${calendarEmail}` : ""}. On this device, “Add to Calendar” can sync straight to Google.`
-                  : "Optional. On iPhone/Mac, tasks open in Calendar automatically. Connect Google if you want one-tap Google sync."}
-              </p>
-              {calendarMessage ? (
-                <p style={{ margin: 0, fontSize: 13, color: PURPLE }}>{calendarMessage}</p>
-              ) : null}
-              {calendarConnected ? (
-                <form action="/api/google/disconnect" method="post">
-                  <button
-                    type="submit"
-                    style={{
-                      height: 40,
-                      borderRadius: 10,
-                      border: "1px solid rgba(124,92,191,0.25)",
-                      background: "white",
-                      color: PURPLE,
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      padding: "0 12px",
-                    }}
-                  >
-                    Disconnect
-                  </button>
-                </form>
-              ) : (
-                <a
-                  href="/api/google/connect"
-                  style={{
-                    height: 40,
-                    borderRadius: 10,
-                    border: "none",
-                    background: PURPLE,
-                    color: "white",
-                    fontWeight: 800,
-                    textDecoration: "none",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "0 12px",
-                  }}
-                >
-                  Connect Google
-                </a>
-              )}
-            </div>
-
             <SignOutRow />
           </div>
         </section>
