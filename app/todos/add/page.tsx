@@ -43,6 +43,9 @@ export default function AddTodoPage() {
   const [dueDate, setDueDate] = React.useState(() => toDateInputValue());
   const [dueTime, setDueTime] = React.useState("20:00");
   const [addToCalendar, setAddToCalendar] = React.useState(true);
+  const [calendarTarget, setCalendarTarget] = React.useState<
+    "google" | "apple" | "both"
+  >("google");
   const [calendars, setCalendars] = React.useState<
     { id: string; summary: string; primary: boolean }[]
   >([]);
@@ -51,8 +54,13 @@ export default function AddTodoPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  const needsGoogle =
+    addToCalendar && (calendarTarget === "google" || calendarTarget === "both");
+  const needsApple =
+    addToCalendar && (calendarTarget === "apple" || calendarTarget === "both");
+
   React.useEffect(() => {
-    if (!addToCalendar) return;
+    if (!needsGoogle) return;
 
     let cancelled = false;
 
@@ -102,7 +110,7 @@ export default function AddTodoPage() {
     return () => {
       cancelled = true;
     };
-  }, [addToCalendar]);
+  }, [needsGoogle]);
 
   async function handleAddTask(e: React.FormEvent) {
     e.preventDefault();
@@ -151,10 +159,10 @@ export default function AddTodoPage() {
         return;
       }
 
-      if (addToCalendar && created?.id) {
+      if (needsGoogle && created?.id) {
         if (!selectedCalendarId) {
           setError(
-            "Task saved, but no calendar was selected. Disconnect/reconnect Calendar in Profile, then try again.",
+            "Task saved, but no Google calendar was selected. Disconnect/reconnect Calendar in Profile, then try again.",
           );
           setIsSaving(false);
           return;
@@ -195,10 +203,15 @@ export default function AddTodoPage() {
           return;
         }
 
-        // Open the exact event in Google Calendar so you can confirm it
-        if (payload.htmlLink) {
+        if (payload.htmlLink && !needsApple) {
           window.open(payload.htmlLink, "_blank", "noopener,noreferrer");
         }
+      }
+
+      // Apple Calendar / any app that opens .ics files
+      if (needsApple && created?.id) {
+        window.location.href = `/api/calendar/ics/${created.id}`;
+        return;
       }
 
       router.push("/todos");
@@ -474,50 +487,94 @@ export default function AddTodoPage() {
               </div>
 
               {addToCalendar ? (
-                <label style={label}>
-                  <p style={labelText}>Calendar</p>
-                  <select
-                    value={selectedCalendarId}
-                    onChange={(e) => setSelectedCalendarId(e.target.value)}
-                    disabled={calendars.length === 0}
-                    style={{
-                      ...input,
-                      appearance: "none" as const,
-                      WebkitAppearance: "none" as const,
-                      cursor: calendars.length === 0 ? "not-allowed" : "pointer",
-                      opacity: calendars.length === 0 ? 0.7 : 1,
-                    }}
-                  >
-                    {calendars.length === 0 ? (
-                      <option value="">
-                        {calendarsError
-                          ? "No calendars loaded"
-                          : "Loading calendars..."}
-                      </option>
-                    ) : (
-                      calendars.map((cal) => (
-                        <option key={cal.id} value={cal.id}>
-                          {cal.summary}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  {calendarsError ? (
+                <>
+                  <label style={label}>
+                    <p style={labelText}>Calendar app</p>
+                    <select
+                      value={calendarTarget}
+                      onChange={(e) =>
+                        setCalendarTarget(
+                          e.target.value as "google" | "apple" | "both",
+                        )
+                      }
+                      style={{
+                        ...input,
+                        appearance: "none" as const,
+                        WebkitAppearance: "none" as const,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <option value="google">Google Calendar</option>
+                      <option value="apple">Apple Calendar (.ics)</option>
+                      <option value="both">Both</option>
+                    </select>
+                  </label>
+
+                  {needsGoogle ? (
+                    <label style={label}>
+                      <p style={labelText}>Google calendar</p>
+                      <select
+                        value={selectedCalendarId}
+                        onChange={(e) => setSelectedCalendarId(e.target.value)}
+                        disabled={calendars.length === 0}
+                        style={{
+                          ...input,
+                          appearance: "none" as const,
+                          WebkitAppearance: "none" as const,
+                          cursor:
+                            calendars.length === 0 ? "not-allowed" : "pointer",
+                          opacity: calendars.length === 0 ? 0.7 : 1,
+                        }}
+                      >
+                        {calendars.length === 0 ? (
+                          <option value="">
+                            {calendarsError
+                              ? "No calendars loaded"
+                              : "Loading calendars..."}
+                          </option>
+                        ) : (
+                          calendars.map((cal) => (
+                            <option key={cal.id} value={cal.id}>
+                              {cal.summary}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      {calendarsError ? (
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 12,
+                            color: "#9B2C2C",
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {calendarsError}{" "}
+                          <Link
+                            href="/profile"
+                            style={{ color: PURPLE, fontWeight: 700 }}
+                          >
+                            Go to Profile
+                          </Link>
+                        </p>
+                      ) : null}
+                    </label>
+                  ) : null}
+
+                  {needsApple ? (
                     <p
                       style={{
                         margin: 0,
                         fontSize: 12,
-                        color: "#9B2C2C",
+                        color: "rgba(45,33,69,0.7)",
                         lineHeight: 1.4,
                       }}
                     >
-                      {calendarsError}{" "}
-                      <Link href="/profile" style={{ color: PURPLE, fontWeight: 700 }}>
-                        Go to Profile
-                      </Link>
+                      Apple Calendar will download a .ics file you can open. For
+                      ongoing sync, subscribe from Profile.
                     </p>
                   ) : null}
-                </label>
+                </>
               ) : null}
 
               {error ? <p style={errorBox}>{error}</p> : null}

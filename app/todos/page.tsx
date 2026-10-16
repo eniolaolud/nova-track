@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { Calendar, Check, Trash2 } from "lucide-react";
+import { Calendar, Check, Download, Trash2 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
@@ -23,6 +23,7 @@ type TodoRowProps = {
   time: string;
   completed?: boolean;
   onToggle?: () => void;
+  onDownloadIcs?: () => void;
   onDelete?: () => void;
 };
 
@@ -31,6 +32,7 @@ function TodoRow({
   time,
   completed = false,
   onToggle,
+  onDownloadIcs,
   onDelete,
 }: TodoRowProps) {
   const row: React.CSSProperties = {
@@ -103,20 +105,28 @@ function TodoRow({
     color: "rgba(45, 33, 69, 0.7)",
   };
 
-  const deleteBtn: React.CSSProperties = {
+  const actions: React.CSSProperties = {
     marginLeft: "auto",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    flex: "0 0 auto",
+  };
+
+  const iconBtn = (danger = false): React.CSSProperties => ({
     border: "none",
-    background: "rgba(192, 57, 43, 0.08)",
-    color: "#C0392B",
+    background: danger
+      ? "rgba(192, 57, 43, 0.08)"
+      : "rgba(124, 92, 191, 0.08)",
+    color: danger ? "#C0392B" : PURPLE,
     borderRadius: 10,
     width: 34,
     height: 34,
-    flex: "0 0 auto",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-  };
+  });
 
   return (
     <div style={row}>
@@ -136,14 +146,25 @@ function TodoRow({
         <p style={titleStyle}>{title}</p>
         <p style={timeStyle}>{time}</p>
       </div>
-      <button
-        type="button"
-        onClick={onDelete}
-        aria-label={`Delete ${title}`}
-        style={deleteBtn}
-      >
-        <Trash2 size={16} strokeWidth={2.25} />
-      </button>
+      <div style={actions}>
+        <button
+          type="button"
+          onClick={onDownloadIcs}
+          aria-label={`Download ${title} for Apple Calendar`}
+          title="Download .ics"
+          style={iconBtn(false)}
+        >
+          <Download size={16} strokeWidth={2.25} />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={`Delete ${title}`}
+          style={iconBtn(true)}
+        >
+          <Trash2 size={16} strokeWidth={2.25} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -453,6 +474,9 @@ export default function TodosPage() {
                       time={todo.due_time || "No time set"}
                       completed={todo.completed}
                       onToggle={() => toggleCompleted(todo)}
+                      onDownloadIcs={() => {
+                        window.location.href = `/api/calendar/ics/${todo.id}`;
+                      }}
                       onDelete={() => deleteTodo(todo)}
                     />
                   ))}
