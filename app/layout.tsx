@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import BottomNav from "./components/BottomNav";
+import DatadogInit from "./components/DatadogInit";
 import HabitReminders from "./components/HabitReminders";
 import "./globals.css";
 
@@ -30,6 +31,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <DatadogInit />
         <div style={{ flex: 1, paddingBottom: 72 }}>{children}</div>
         <BottomNav />
         <HabitReminders />

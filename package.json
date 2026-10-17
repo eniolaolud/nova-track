@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@datadog/browser-rum": "^7.16.0",
+    "@datadog/browser-rum-react": "^7.16.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.103.0",
     "firebase": "^12.12.0",
